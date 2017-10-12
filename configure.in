@@ -1,0 +1,100 @@
+AC_INIT(shed.c)
+AM_INIT_AUTOMAKE(shed,1.16)
+AC_PROG_CC
+AC_PROG_CC_C99
+AC_PROG_INSTALL
+AC_SUBST(CFLAGS)
+AC_SUBST(CPPFLAGS)
+AC_SUBST(LDFLAGS)
+AC_SUBST(SHED_MAIN)
+CFLAGS="$CFLAGS -Wall"
+
+AC_ARG_ENABLE(debug,   [  --enable-debug          gcc -g],enable_debug=yes)
+if test "$enable_debug" = "yes"
+then
+  CFLAGS="$CFLAGS -g"
+fi
+
+# Large file support
+
+AC_ARG_ENABLE(lfs,     [  --enable-lfs            large file support],,enable_lfs=yes)
+test -z "$enable_lfs" && enable_lfs="$enableval"
+if test $enable_lfs = "yes"
+then
+  CFLAGS="$CFLAGS -DSHED_LFS=1 -D_FILE_OFFSET_BITS=64"
+else
+  CFLAGS="$CFLAGS -DSHED_LFS=0"
+fi
+
+
+# UTF8 support
+
+AC_ARG_ENABLE(utf8,    [  --enable-utf8           utf8 support],enable_utf8=no,enable_utf8=yes)
+test -z "$enable_utf8" && enable_utf8="no"
+if test "$enable_utf8" = "yes"
+then
+  CFLAGS="$CFLAGS -DSHED_WCHAR=1"
+  ncurses_h="ncursesw/ncurses.h"
+  ncurses_lib="ncursesw"
+  ncurses_config="ncursesw5-config"
+else
+  CFLAGS="$CFLAGS -DSHED_WCHAR=0"
+  ncurses_h="ncurses.h"
+  ncurses_lib="ncurses"
+  ncurses_config="ncurses5-config"
+fi
+
+AC_CHECK_HEADER($ncurses_h,ncurses_h_found="yes",ncurses_h_found="no")
+if test "$ncurses_h_found" = "no"
+then
+  echo "shed: $ncurses_h not found on default path."
+  echo "shed: setting flags with $ncurses_config and hoping for the best"
+  CFLAGS="$CFLAGS $($ncurses_config --cflags)"
+  LDFLAGS="$LDFLAGS $($ncurses_config --libs)"
+fi
+
+AC_CHECK_LIB($ncurses_lib,initscr)
+
+
+# Cocoa
+AC_ARG_ENABLE(cygfix,  [  --enable-cocoa         OSX cocoa interface],enable_cygfix=yes)
+test -z "$enable_cocoa" && enable_cocoa="no"
+if test "$enable_cocoa" = "yes"
+then
+  CFLAGS="$CFLAGS -DSHED_COCOA=1"
+else
+  CFLAGS="$CFLAGS -DSHED_COCOA=0"
+fi
+
+
+# Cygwin fix
+
+AC_ARG_ENABLE(cygfix,  [  --enable-cygfix         cygwin fix],enable_cygfix=yes)
+if test "$enable_cygfix" = "yes"
+then
+  CFLAGS="$CFLAGS -DSHED_CYGFIX=1"
+else
+  CFLAGS="$CFLAGS -DSHED_CYGFIX=0"
+fi
+
+
+# Nofollow stat
+
+AC_ARG_ENABLE(nofollow,[  --enable-nofollow       nofollow option],enable_nofollow=yes)
+if test "$enable_nofollow" = "yes"
+then
+  CFLAGS="$CFLAGS -DSHED_NOFOLLOW=1"
+else
+  CFLAGS="$CFLAGS -DSHED_NOFOLLOW=0"
+fi
+
+
+ERR="Required package missing!"
+AC_CHECK_HEADER(getopt.h,:,AC_MSG_ERROR([$ERR]))
+AC_CHECK_LIB(m,pow)
+
+echo "shed: large file support: $enable_lfs"
+echo "shed: utf8 support: $enable_utf8"
+echo "shed: enable cocoa: $enable_cocoa"
+
+AC_OUTPUT(Makefile)
